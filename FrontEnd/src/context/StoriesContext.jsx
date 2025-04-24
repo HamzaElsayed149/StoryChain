@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const StoriesContext = createContext();
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://story-chain-jade.vercel.app/api';
 
 export const StoriesProvider = ({ children }) => {
   const [stories, setStories] = useState([]);
