@@ -64,7 +64,7 @@ const UserProfile = () => {
   const handleSaveBio = async () => {
     try {
       setError(null);
-      const response = await fetch(`http://localhost:5000/api/users/${user._id}`, {
+      const response = await fetch(`https://story-chain-jade.vercel.app/api/users/${user._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
