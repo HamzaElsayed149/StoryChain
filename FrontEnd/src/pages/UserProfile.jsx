@@ -15,7 +15,7 @@ const UserProfile = () => {
   useEffect(() => {
     if (nickname) {
       // Fetch user data for the specified nickname
-      fetch(`http://localhost:5000/api/users/by-nickname/${nickname}`)
+      fetch(`https://story-chain-jade.vercel.app/api/users/by-nickname/${nickname}`)
         .then(res => {
           if (!res.ok) {
             throw new Error('User not found');
