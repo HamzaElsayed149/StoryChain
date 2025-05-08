@@ -24,5 +24,17 @@ app.get('/api/health', (req, res) => {
 app.use('/api/stories', require('./routes/stories'));
 app.use('/api/users', require('./routes/users'));
 
-// Export the Express API
+// Start server when running locally
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    try {
+      console.log(`Server is running on port ${PORT}`);
+    } catch (error) {
+      console.log(error);
+    }
+  });
+}
+
+// Export for Vercel
 module.exports = app;

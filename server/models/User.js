@@ -7,6 +7,11 @@ const userSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  bio: {
+    type: String,
+    default: '',
+    maxLength: 500
+  },
   createdAt: {
     type: Date,
     default: Date.now

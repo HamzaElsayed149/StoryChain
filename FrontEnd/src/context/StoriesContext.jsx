@@ -99,6 +99,101 @@ export const StoriesProvider = ({ children }) => {
     }
   };
 
+  const editSentence = async (storyId, sentenceId, newText) => {
+    try {
+      const story = stories.find(s => s._id === storyId);
+      if (!story) throw new Error('Story not found');
+  
+      const updatedSentences = story.sentences.map(sentence =>
+        sentence._id === sentenceId ? { ...sentence, text: newText } : sentence
+      );
+  
+      const response = await fetch(`${API_URL}/stories/${storyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...story, sentences: updatedSentences }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to edit sentence');
+      }
+  
+      const updatedStory = await response.json();
+      setStories(prev => prev.map(story => 
+        story._id === storyId ? updatedStory : story
+      ));
+    } catch (err) {
+      setError('Failed to edit sentence');
+      throw err;
+    }
+  };
+
+  const deleteSentence = async (storyId, sentenceId) => {
+    try {
+      const story = stories.find(s => s._id === storyId);
+      if (!story) throw new Error('Story not found');
+
+      const updatedSentences = story.sentences.filter(sentence => 
+        sentence._id !== sentenceId
+      );
+  
+      // Make sure we're sending all required story data
+      const storyToUpdate = {
+        ...story,
+        sentences: updatedSentences
+      };
+  
+      const response = await fetch(`${API_URL}/stories/${storyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(storyToUpdate),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete sentence');
+      }
+  
+      const updatedStory = await response.json();
+      setStories(prev => prev.map(story => 
+        story._id === storyId ? updatedStory : story
+      ));
+    } catch (err) {
+      console.error('Delete sentence error:', err);
+      setError('Failed to delete sentence');
+      throw err;
+    }
+  };
+
+  const toggleLike = async (storyId, userId) => {
+    try {
+      const response = await fetch(`${API_URL}/stories/${storyId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to toggle like');
+      }
+
+      const updatedStory = await response.json();
+      setStories(prev => prev.map(story => 
+        story._id === storyId ? updatedStory : story
+      ));
+    } catch (err) {
+      throw err;
+    }
+  };
+
   return (
     <StoriesContext.Provider value={{ 
       stories, 
@@ -107,6 +202,9 @@ export const StoriesProvider = ({ children }) => {
       addStory, 
       addSentence, 
       toggleVote,
+      editSentence,
+      deleteSentence,
+      toggleLike,
       clearError: () => setError(null)
     }}>
       {children}

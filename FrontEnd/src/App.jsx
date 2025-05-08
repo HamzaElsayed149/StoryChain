@@ -28,6 +28,7 @@ const AppContent = () => {
           <Route path="/create" element={<CreateStory />} />
           <Route path="/story/:id" element={<StoryDetail />} />
           <Route path="/profile" element={<UserProfile />} />
+          <Route path="/profile/:nickname" element={<UserProfile />} />
         </Routes>
         <NicknameModal 
           isOpen={showNicknameModal} 

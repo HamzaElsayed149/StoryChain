@@ -25,20 +25,27 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Update nickname
+// Update user (nickname or bio)
 router.put('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { nickname } = req.body;
+    const { nickname, bio } = req.body;
     
-    const existingUser = await User.findOne({ nickname });
-    if (existingUser && existingUser._id.toString() !== userId) {
-      return res.status(400).json({ message: 'Nickname already taken' });
+    // If nickname is being updated, check for duplicates
+    if (nickname) {
+      const existingUser = await User.findOne({ nickname });
+      if (existingUser && existingUser._id.toString() !== userId) {
+        return res.status(400).json({ message: 'Nickname already taken' });
+      }
     }
+    
+    const updateData = {};
+    if (nickname) updateData.nickname = nickname;
+    if (bio !== undefined) updateData.bio = bio;
     
     const user = await User.findByIdAndUpdate(
       userId,
-      { nickname },
+      updateData,
       { new: true }
     );
     
@@ -49,6 +56,44 @@ router.put('/:userId', async (req, res) => {
     res.json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { bio } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { bio },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Failed to update user' });
+  }
+});
+
+// Get user by nickname
+router.get('/by-nickname/:nickname', async (req, res) => {
+  try {
+    const { nickname } = req.params;
+    const user = await User.findOne({ nickname });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 

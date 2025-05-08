@@ -4,7 +4,7 @@ import { useUser } from '../context/UserContext';
 const NicknameModal = ({ isOpen, onClose }) => {
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
-  const { login } = useUser();
+  const { setUser } = useUser();  // Changed from { login } to { setUser }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -13,9 +13,25 @@ const NicknameModal = ({ isOpen, onClose }) => {
       return;
     }
     
-    // TODO: Check if nickname is unique in your data store
-    login(nickname);
-    onClose();
+    try {
+      const response = await fetch('http://localhost:5000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ nickname }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to login');
+      }
+
+      const userData = await response.json();
+      setUser(userData);
+      onClose();
+    } catch (err) {
+      setError('Failed to login. Please try again.');
+    }
   };
 
   if (!isOpen) return null;

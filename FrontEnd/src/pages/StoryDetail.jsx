@@ -6,11 +6,14 @@ import { useUser } from '../context/UserContext';
 const StoryDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { stories, addSentence, toggleVote } = useStories();
+  const { stories, addSentence, toggleVote, deleteSentence, editSentence } = useStories();
   const { user } = useUser();
   const [newSentence, setNewSentence] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [editingSentenceId, setEditingSentenceId] = useState(null);
+  const [editedText, setEditedText] = useState('');
+  const [filter, setFilter] = useState('all');
 
   const story = stories.find(s => s._id === id);
 
@@ -60,6 +63,39 @@ const StoryDetail = () => {
     }
   };
 
+  const handleEdit = (sentenceId, currentText) => {
+    setEditingSentenceId(sentenceId);
+    setEditedText(currentText);
+  };
+
+  const handleSaveEdit = async (sentenceId) => {
+    if (!editedText.trim()) {
+      setError('Sentence text cannot be empty');
+      return;
+    }
+
+    try {
+      setError(null);
+      await editSentence(id, sentenceId, editedText);
+      setEditingSentenceId(null);
+      setEditedText('');
+    } catch (err) {
+      console.error('Edit error:', err);
+      setError('Failed to update sentence. Please try again.');
+    }
+  };
+
+  const handleDelete = async (sentenceId) => {
+    if (window.confirm('هل أنت متأكد من حذف هذه الجملة؟')) {
+      try {
+        setError(null);
+        await deleteSentence(id, sentenceId);
+      } catch (err) {
+        setError('Failed to delete sentence. Please try again.');
+      }
+    }
+  };
+
   if (!story) {
     return (
       <div className="max-w-3xl mx-auto text-center py-12">
@@ -95,9 +131,22 @@ const StoryDetail = () => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8" dir="rtl">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">
-        {story.title }
-      </h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">
+          {story.title}
+        </h1>
+        <div className="flex items-center gap-4">
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="bg-white rounded-lg border-2 border-gray-200 px-3 py-1 text-gray-700"
+          >
+            <option value="all">جميع الجمل</option>
+            <option value="mine">جملي</option>
+            <option value="others">جمل الآخرين</option>
+          </select>
+        </div>
+      </div>
 
       {error && (
         <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-4 text-center">
@@ -107,38 +156,109 @@ const StoryDetail = () => {
 
       <div className="prose prose-lg mb-8 bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow">
         <div className="space-y-1">
-          {story.sentences.map((sentence, index) => {
-            const colors = getAuthorColor(sentence.author);
-            const hasVoted = Array.isArray(sentence.voters) && sentence.voters.includes(user.nickname);
-            const voteCount = Array.isArray(sentence.voters) ? sentence.voters.length : 0;
-            
-            return (
-              <span
-                key={sentence._id}
-                className={`inline ${colors.bg} ${colors.text} px-1 py-0.5 rounded cursor-pointer group relative`}
-                title={`By ${sentence.author}`}
-              >
-                {sentence.text}{' '}
-                <span 
-                  className="text-xs bg-white/90 backdrop-blur-sm px-2 py-1 rounded shadow-sm absolute -top-8 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2"
+          {story.sentences
+            .filter(sentence => {
+              if (filter === 'mine' && user) return sentence.author === user.nickname;
+              if (filter === 'others' && user) return sentence.author !== user.nickname;
+              return true;
+            })
+            .map((sentence, index) => {
+              const colors = getAuthorColor(sentence.author);
+              const hasVoted = Array.isArray(sentence.voters) && sentence.voters.includes(user.nickname);
+              const voteCount = Array.isArray(sentence.voters) ? sentence.voters.length : 0;
+              
+              return (
+                <span
+                  key={sentence._id}
+                  className={`inline ${colors.bg} ${colors.text} px-1 py-.5 rounded cursor-pointer group relative`}
                   onClick={(e) => {
-                    e.stopPropagation();
-                    handleVote(sentence._id);
+                    // تجنب تنفيذ الكود إذا كان النقر على الأزرار
+                    if (e.target.tagName === 'BUTTON') {
+                      return;
+                    }
+                    const element = document.getElementById(`options-${sentence._id}`);
+                    if (element) {
+                      // إغلاق جميع القوائم المفتوحة أولاً
+                      document.querySelectorAll('[id^="options-"]').forEach(el => {
+                        if (el !== element) {
+                          el.classList.add('opacity-0');
+                        }
+                      });
+                      // تبديل حالة القائمة الحالية
+                      element.classList.toggle('opacity-0');
+                    }
                   }}
+                  title={`By ${sentence.author}`}
                 >
-                  <span>{sentence.author}</span>
-                  <button 
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
-                      hasVoted ? 'bg-rose-500 text-white' : 'bg-gray-100 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span>👍</span>
-                    <span>{voteCount}</span>
-                  </button>
+                  {editingSentenceId === sentence._id ? (
+                    <div className="inline-flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={editedText}
+                        onChange={(e) => setEditedText(e.target.value)}
+                        className="rounded border-2 border-rose-200 p-1 text-gray-900 min-w-[200px]"
+                      />
+                      <button
+                        onClick={() => handleSaveEdit(sentence._id)}
+                        className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 text-sm"
+                      >
+                        حفظ
+                      </button>
+                      <button
+                        onClick={() => setEditingSentenceId(null)}
+                        className="bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700 text-sm"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {sentence.text}{' '}
+                      <span 
+                        id={`options-${sentence._id}`}
+                        className="text-xs bg-white/90 backdrop-blur-sm px-2 py-1 rounded shadow-sm absolute -top-8 right-0 opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 z-10"
+                      >
+                        <span>{sentence.author}</span>
+                        <button 
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                            hasVoted ? 'bg-rose-500 text-white' : 'bg-gray-100 hover:bg-gray-200'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVote(sentence._id);
+                          }}
+                        >
+                          <span>👍</span>
+                          <span>{voteCount}</span>
+                        </button>
+                        {user && sentence.author === user.nickname && (
+                          <div className="flex gap-1 mr-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(sentence._id, sentence.text);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-0.5 rounded-full"
+                            >
+                              تعديل
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(sentence._id);
+                              }}
+                              className="text-red-600 hover:text-red-800 bg-red-50 px-2 py-0.5 rounded-full"
+                            >
+                              حذف
+                            </button>
+                          </div>
+                        )}
+                      </span>
+                    </>
+                  )}
                 </span>
-              </span>
-            );
-          })}
+              );
+            })}
         </div>
       </div>
 
@@ -170,6 +290,32 @@ const StoryDetail = () => {
           </button>
         </form>
       )}
+
+      {/* Add Contributors Section */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">المساهمون</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {Array.from(new Set(story.sentences.map(sentence => sentence.author))).map(author => {
+            const authorSentences = story.sentences.filter(s => s.author === author);
+            const colors = getAuthorColor(author);
+            
+            return (
+              <div 
+                key={author}
+                onClick={() => navigate(`/profile/${author}`)}
+                className={`${colors.bg} rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow duration-200`}
+              >
+                <div className={`${colors.text} font-semibold text-lg mb-2`}>
+                  {author}
+                </div>
+                <div className="text-gray-600 text-sm">
+                  {authorSentences.length} جملة
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

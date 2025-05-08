@@ -114,5 +114,47 @@ router.post('/:storyId/sentences/:sentenceId/vote', async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
+router.put('/:id', async (req, res) => {
+  try {
+    const updatedStory = await Story.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    res.json(updatedStory);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Toggle like on story
+router.post('/:id/like', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    const story = await Story.findById(id);
+    if (!story) {
+      return res.status(404).json({ message: 'Story not found' });
+    }
+
+    const likedByIndex = story.likedBy.indexOf(userId);
+    if (likedByIndex === -1) {
+      // Add like
+      story.likedBy.push(userId);
+      story.likes = (story.likes || 0) + 1;
+    } else {
+      // Remove like
+      story.likedBy.splice(likedByIndex, 1);
+      story.likes = Math.max(0, (story.likes || 1) - 1);
+    }
+
+    await story.save();
+    res.json(story);
+  } catch (error) {
+    console.error('Like error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 module.exports = router;

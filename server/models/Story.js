@@ -30,6 +30,13 @@ const storySchema = new mongoose.Schema({
     required: true,
     maxLength: 200
   },
+  likes: {
+    type: Number,
+    default: 0
+  },
+  likedBy: [{
+    type: String
+  }],
   sentences: [sentenceSchema],
   genre: [{
     type: String,
